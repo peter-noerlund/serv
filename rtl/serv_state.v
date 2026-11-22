@@ -136,7 +136,7 @@ module serv_state
             for the first cycle after init). Shift out during phase 2
     */
    
-   assign o_bufreg_en = (o_cnt_en & (o_init | ((o_ctrl_trap | i_branch_op) & i_two_stage_op))) | (i_shift_op & init_done & (i_sh_right | i_sh_done));
+   assign o_bufreg_en = (o_cnt_en & (o_init | ((o_ctrl_trap | i_branch_op) & i_two_stage_op))) | (i_shift_op & init_done & ((i_sh_right & (i_rf_ready | o_cnt_en | ~i_sh_done)) | (~i_sh_right & i_sh_done)));
 
    assign o_ibus_cyc = ibus_cyc & !i_rst;
 
