@@ -68,12 +68,175 @@ module serv_decode
    output reg       o_rd_csr_en,
    output reg       o_rd_alu_en);
 
+   /* Instruction map
+
+   RV32I
+
+   3322222 22222 11111 111 11
+   1098765 43210 98765 432 10987 6543210
+   -------------------------------------
+   iiiiiii iiiii iiiii iii rrrrr 0110111 LUI
+
+   iiiiiii iiiii iiiii iii rrrrr 0010111 AUIPC
+
+   iiiiiii iiiii iiiii iii rrrrr 1101111 JAL
+
+   iiiiiii iiiii rrrrr 000 rrrrr 1100111 JALR
+
+   iiiiiii rrrrr rrrrr 000 iiiii 1100011 BEQ
+   iiiiiii rrrrr rrrrr 001 iiiii 1100011 BNE
+   iiiiiii rrrrr rrrrr 100 iiiii 1100011 BLT
+   iiiiiii rrrrr rrrrr 101 iiiii 1100011 BGE
+   iiiiiii rrrrr rrrrr 110 iiiii 1100011 BLTU
+   iiiiiii rrrrr rrrrr 111 iiiii 1100011 BGEU
+
+   iiiiiii iiiii rrrrr 000 rrrrr 0000011 LB
+   iiiiiii iiiii rrrrr 001 rrrrr 0000011 LH
+   iiiiiii iiiii rrrrr 010 rrrrr 0000011 LW
+   iiiiiii iiiii rrrrr 100 rrrrr 0000011 LBU
+   iiiiiii iiiii rrrrr 101 rrrrr 0000011 LHU
+
+   iiiiiii rrrrr rrrrr 000 iiiii 0100011 SB
+   iiiiiii rrrrr rrrrr 001 iiiii 0100011 SH
+   iiiiiii rrrrr rrrrr 010 iiiii 0100011 SW
+
+   iiiiiii iiiii rrrrr 000 rrrrr 0010011 ADDI
+   iiiiiii iiiii rrrrr 010 rrrrr 0010011 SLTI
+   iiiiiii iiiii rrrrr 011 rrrrr 0010011 SLTIU
+   iiiiiii iiiii rrrrr 100 rrrrr 0010011 XORI
+   iiiiiii iiiii rrrrr 110 rrrrr 0010011 ORI
+   iiiiiii iiiii rrrrr 111 rrrrr 0010011 ANDI
+   0000000 sssss rrrrr 001 rrrrr 0010011 SLLI
+   0000000 sssss rrrrr 101 rrrrr 0010011 SRLI
+   0100000 sssss rrrrr 101 rrrrr 0010011 SRAI
+
+   0000000 rrrrr rrrrr 000 rrrrr 0110011 ADD
+   0100000 rrrrr rrrrr 000 rrrrr 0110011 SUB
+   0000000 rrrrr rrrrr 001 rrrrr 0110011 SLL
+   0000000 rrrrr rrrrr 010 rrrrr 0110011 SLT
+   0000000 rrrrr rrrrr 011 rrrrr 0110011 SLTU
+   0000000 rrrrr rrrrr 100 rrrrr 0110011 XOR
+   0000000 rrrrr rrrrr 101 rrrrr 0110011 SRL
+   0100000 rrrrr rrrrr 101 rrrrr 0110011 SRA
+   0000000 rrrrr rrrrr 110 rrrrr 0110011 OR
+   0000000 rrrrr rrrrr 111 rrrrr 0110011 AND
+
+   0000000 00000 00000 000 00000 1110011 ECALL
+   0000000 00001 00000 000 00000 1110011 EBREAK
+
+   RV32M
+   3322222 22222 11111 111 11
+   1098765 43210 98765 432 10987 6543210
+   -------------------------------------
+   0000001 rrrrr rrrrr 000 rrrrr 0110011 MUL
+   0000001 rrrrr rrrrr 001 rrrrr 0110011 MULH
+   0000001 rrrrr rrrrr 010 rrrrr 0110011 MULHSU
+   0000001 rrrrr rrrrr 011 rrrrr 0110011 MULHU
+   0000001 rrrrr rrrrr 100 rrrrr 0110011 DIV
+   0000001 rrrrr rrrrr 101 rrrrr 0110011 DIVU
+   0000001 rrrrr rrrrr 110 rrrrr 0110011 REM
+   0000001 rrrrr rrrrr 111 rrrrr 0110011 REMU
+
+   Zicsr
+   3322222 22222 11111 111 11
+   1098765 43210 98765 432 10987 6543210
+   -------------------------------------
+   ccccccc ccccc rrrrr 001 rrrrr 1110011 CSRRW
+   ccccccc ccccc rrrrr 010 rrrrr 1110011 CSRRS
+   ccccccc ccccc rrrrr 011 rrrrr 1110011 CSRRC
+   ccccccc ccccc iiiii 100 rrrrr 1110011 CSRRWI
+   ccccccc ccccc iiiii 101 rrrrr 1110011 CSRRSI
+   ccccccc ccccc iiiii 111 rrrrr 1110011 CSRRCI
+
+   Zbb
+   3322222 22222 11111 111 11
+   1098765 43210 98765 432 10987 6543210
+   -------------------------------------
+   0100000 rrrrr rrrrr 100 rrrrr 0110011 XORN
+   0100000 rrrrr rrrrr 110 rrrrr 0110011 ORN
+   0100000 rrrrr rrrrr 111 rrrrr 0110011 ANDN
+   0000101 rrrrr rrrrr 100 rrrrr 0110011 MIN
+   0000101 rrrrr rrrrr 101 rrrrr 0110011 MINU
+   0000101 rrrrr rrrrr 110 rrrrr 0110011 MAX
+   0000101 rrrrr rrrrr 111 rrrrr 0110011 MAXU
+   0000100 00000 rrrrr 100 rrrrr 0110011 ZEXT.H 
+   0110000 rrrrr rrrrr 001 rrrrr 0110011 ROL
+   0110000 rrrrr rrrrr 101 rrrrr 0110011 ROR
+
+   0110000 00000 rrrrr 001 rrrrr 0010011 CLZ
+   0110000 00001 rrrrr 001 rrrrr 0010011 CTZ
+   0110000 00010 rrrrr 001 rrrrr 0010011 CPOP
+   0110100 11000 rrrrr 101 rrrrr 0010011 REV8
+   0110000 00100 rrrrr 001 rrrrr 0010011 SEXT.B
+   0110000 00101 rrrrr 001 rrrrr 0010011 SEXT.H
+   0110000 sssss rrrrr 101 rrrrr 0010011 RORI
+   0010100 00111 rrrrr 101 rrrrr 0010011 ORC.B
+
+   Use bits in decoding
+   3322222 22222 11111 111 11
+   1098765 43210 98765 432 10987 6543210
+   -------------------------------------
+   -x---xx --xxx ----- xxx ----- xxxxx--
+
+
+   Decoders view of OP instructions
+
+   3322222 22222 11111 111 11
+   1098765 43210 98765 432 10987 6543210
+   -------------------------------------
+   -0----- ----- ----- 000 ----- 01100-- ADD
+   -1----- ----- ----- 000 ----- 01100-- SUB
+   -0----- ----- ----- 001 ----- 01100-- SLL
+   -1----- ----- ----- 001 ----- 01100-- ROL
+   ------- ----- ----- 010 ----- 01100-- SLT
+   ------- ----- ----- 011 ----- 01100-- SLTU
+   -0--0-- ----- ----- 100 ----- 01100-- XOR
+   -0--1-0 ----- ----- 100 ----- 01100-- ZEXT.H	(Zbb, TODO)
+   -0--1-1 ----- ----- 100 ----- 01100-- MIN	(Zbb, TODO)
+   -1----- ----- ----- 100 ----- 01100-- XORN	(Zbb, TODO)
+   -0----0 ----- ----- 101 ----- 01100-- SRL
+   -0----1 ----- ----- 101 ----- 01100-- MINU	(Zbb, TODO
+   -10---- ----- ----- 101 ----- 01100-- SRA
+   -11---- ----- ----- 101 ----- 01100-- ROR	(Zbb, N/A)
+   -0----0 ----- ----- 110 ----- 01100-- OR
+   -0----1 ----- ----- 110 ----- 01100-- MAX	(Zbb, TODO)
+   -1----- ----- ----- 110 ----- 01100-- ORN	(Zbb,TODO)
+   -0----0 ----- ----- 111 ----- 01100-- AND
+   -0----1 ----- ----- 111 ----- 01100-- MAXU	(Zbb, TODO)
+   -1----- ----- ----- 111 ----- 01100-- ANDN	(Zbb, TODO)
+
+
+   Decoders view on OP-IMM instructions
+   3322222 22222 11111 111 11
+   1098765 43210 98765 432 10987 6543210
+   -------------------------------------
+   ------- ----- ----- 000 ----- 00100-- ADDI
+   -0----- ----- ----- 001 ----- 00100-- SLLI
+   -1----- --000 ----- 001 ----- 00100-- CLZ	(Zbb, TODO
+   -1----- --001 ----- 001 ----- 00100-- CTZ	(Zbb, TODO)
+   -1----- --01- ----- 001 ----- 00100-- CPOP	(Zbb, N/A)
+   -1----- --1-0 ----- 001 ----- 00100-- SEXT.B	(Zbb, TODO)
+   -1----- --1-1 ----- 001 ----- 00100-- SEXT.H	(Zbb, TODO)
+   ------- ----- ----- 010 ----- 00100-- SLTI
+   ------- ----- ----- 011 ----- 00100-- SLTIU
+   ------- ----- ----- 100 ----- 00100-- XORI
+   -00---- ----- ----- 101 ----- 00100-- SRLI
+   -01---- ----- ----- 101 ----- 00100-- ORC.B	(Zbb, N/A)
+   -10---- ----- ----- 101 ----- 00100-- SRAI
+   -11-1-- ----- ----- 101 ----- 00100-- REV8	(Zbb, N/A)
+   -11-0-- ----- ----- 101 ----- 00100-- RORI	(Zbb, N/A)
+   ------- ----- ----- 110 ----- 00100-- ORI
+   ------- ----- ----- 111 ----- 00100-- ANDI
+   */
+
    reg [4:0] opcode;
    reg [2:0] funct3;
    reg        op20;
    reg        op21;
    reg        op22;
    reg        op26;
+   reg	      op27;
+   reg	      op29;
 
    reg       imm25;
    reg       imm30;
@@ -81,8 +244,10 @@ module serv_decode
    wire co_mdu_op     = MDU & (opcode == 5'b01100) & imm25;
 
    wire co_two_stage_op =
-	~opcode[2] | (funct3[0] & ~funct3[1] & ~opcode[0] & ~opcode[4]) |
-	(funct3[1] & ~funct3[2] & ~opcode[0] & ~opcode[4]) | co_mdu_op;
+	~opcode[2] |
+	(funct3[0] & ~funct3[1] & ~opcode[0] & ~opcode[4]) |
+	(funct3[1] & ~funct3[2] & ~opcode[0] & ~opcode[4]) |
+	co_mdu_op;
    wire co_shift_op = (opcode[2] & ~funct3[1]) & !co_mdu_op;
    wire co_branch_op = opcode[4];
    wire co_dbus_en    = ~opcode[2] & ~opcode[4];
@@ -249,6 +414,8 @@ module serv_decode
                op21   <= i_wb_rdt[21];
                op22   <= i_wb_rdt[22];
                op26   <= i_wb_rdt[26];
+	       op27   <= i_wb_rdt[27];
+	       op29   <= i_wb_rdt[29];
             end
          end
 
@@ -310,6 +477,8 @@ module serv_decode
             op21    = i_wb_rdt[21];
             op22    = i_wb_rdt[22];
             op26    = i_wb_rdt[26];
+	    op27    = i_wb_rdt[27];
+	    op29    = i_wb_rdt[29];
          end
 
          always @(posedge clk) begin
