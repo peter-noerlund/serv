@@ -78,7 +78,7 @@ module serv_decode
    reg       imm25;
    reg       imm30;
 
-   wire co_mdu_op     = MDU & (opcode == 5'b01100) & imm25;
+   wire co_mdu_op     = MDU & (opcode == 5'b00010) & imm25;
 
    wire co_two_stage_op =
 	~opcode[2] | (funct3[0] & ~funct3[1] & ~opcode[0] & ~opcode[4]) |
